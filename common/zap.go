@@ -11,23 +11,23 @@ var(
 )
 
 func init()  {
-	//日志文件名称
+
 	fileName := "micro.log"
 	syncWriter:= zapcore.AddSync(
 		&lumberjack.Logger{
-			Filename:   fileName, //文件名称
-			MaxSize:    521,//MB
+			Filename:   fileName, 
+			MaxSize:    
 			//MaxAge:     0,
-			MaxBackups: 0, //最大备份
+			MaxBackups: 0,
 			LocalTime:  true,
-			Compress:   true, //是否启用压缩
+			Compress:   true, 
 		})
-	//编码
+
 	encoder:=zap.NewProductionEncoderConfig()
-	//时间格式
+
 	encoder.EncodeTime = zapcore.ISO8601TimeEncoder
 	core:= zapcore.NewCore(
-		// 编码器
+
 		zapcore.NewJSONEncoder(encoder),
 		syncWriter,
 		//
