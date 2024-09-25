@@ -24,65 +24,65 @@ var (
 )
 
 func main() {
-	// 1.配置中心
-	consulConfig,err:=common.GetConsulConfig("localhost",8500,"/micro/config")
-	if err !=nil {
+	// 1. Configuration center
+	consulConfig, err := common.GetConsulConfig("localhost", 8500, "/micro/config")
+	if err != nil {
 		log.Error(err)
 	}
-	// 2.注册中心
-	consul :=consul2.NewRegistry(func(options *registry.Options) {
+	// 2. Registry center
+	consul := consul2.NewRegistry(func(options *registry.Options) {
 		options.Addrs = []string{
 			"localhost:8500",
 		}
 	})
-	// 3.jaeger 链路追踪
-	t,io,err := common.NewTracer("go.micro.service.order","localhost:6831")
-	if err !=nil {
+	// 3. Jaeger tracing
+	t, io, err := common.NewTracer("go.micro.service.order", "localhost:6831")
+	if err != nil {
 		log.Error(err)
 	}
 	defer io.Close()
 	opentracing.SetGlobalTracer(t)
-	// 4.初始化数据库
-	mysqlInfo := common.GetMysqlFromConsul(consulConfig,"mysql")
-	db,err:= gorm.Open("mysql",mysqlInfo.User+":"+mysqlInfo.Pwd+"@/"+mysqlInfo.Database+"?charset=utf8&parseTime=True&loc=Local")
-	if err !=nil {
+	// 4. Initialize database
+	mysqlInfo := common.GetMysqlFromConsul(consulConfig, "mysql")
+	db, err := gorm.Open("mysql", mysqlInfo.User+":"+mysqlInfo.Pwd+"@/"+mysqlInfo.Database+"?charset=utf8&parseTime=True&loc=Local")
+	if err != nil {
 		log.Error(err)
 	}
 	defer db.Close()
-	//禁止副表
+	// Disable plural table names
 	db.SingularTable(true)
 
-	//第一次运行的时候创建表
+	// Create tables on first run
 	//tableInit := repository.NewOrderRepository(db)
 	//tableInit.InitTable()
 
-	//创建实例
+	// Create instance
 	orderDataService := service2.NewOrderDataService(repository.NewOrderRepository(db))
 
-	// 5.暴露监控地址
+	// 5. Expose monitoring address
 	common.PrometheusBoot(9092)
 
 	// New Service
 	service := micro.NewService(
 		micro.Name("go.micro.service.order"),
 		micro.Version("latest"),
-		//暴露的服务地址
+		// Service address to expose
 		micro.Address(":9085"),
-		//添加consul 注册中心
+		// Add consul registry
 		micro.Registry(consul),
-		//添加链路追踪
+		// Add tracing
 		micro.WrapHandler(opentracing2.NewHandlerWrapper(opentracing.GlobalTracer())),
-		//添加限流
+		// Add rate limiting
 		micro.WrapHandler(ratelimit.NewHandlerWrapper(QPS)),
-		//添加监控
+		// Add monitoring
 		micro.WrapHandler(prometheus.NewHandlerWrapper()),
 	)
 
-	// Initialise service
+	// Initialize service
 	service.Init()
 
 	// Register Handler
-	order.RegisterOrderHandler(service.Server(), &handler.Order{OrderDataService:orderDataService})
+	order.RegisterOrderHandler(service.Server(), &handler.Order{OrderDataService: orderDataService})
 
 	// Run service
 	if err := service.Run(); err != nil {
