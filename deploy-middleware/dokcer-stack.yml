@@ -29,6 +29,6 @@ services:
       - "5601:5601"
     volumes:
       - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml
-    #后加的优化，这里的意思是，要等待 elasticsearch 启动正常
+
     depends_on:
       - elasticsearch
